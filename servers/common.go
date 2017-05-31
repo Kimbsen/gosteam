@@ -2,6 +2,7 @@ package servers
 
 import (
 	"errors"
+	"log"
 	"net"
 	"time"
 )
@@ -16,19 +17,32 @@ var (
 )
 
 // Connect to the given address (in <ip>:<port> form) and return the UDP connection or an error.
-func connect(addr string) (connection *net.UDPConn, error error) {
-	udpAddr, error := net.ResolveUDPAddr("udp", addr)
-	if error != nil {
+func connect(addr, laddr string) (connection *net.UDPConn, error error) {
+
+	l, err := net.ResolveUDPAddr("udp", laddr)
+	if err != nil {
+		log.Fatal("Nope1", err)
+		error = err
 		return
 	}
 
-	connection, error = net.DialUDP("udp", nil, udpAddr)
+	udpAddr, error := net.ResolveUDPAddr("udp", addr)
+	if error != nil {
+		log.Fatal("Nope2", error)
+		return
+	}
+
+	connection, error = net.DialUDP("udp", l, udpAddr)
+	if error != nil {
+		log.Fatal("Nope3", error)
+	}
 	return
 }
 
 // Start listening on the given UDP address and return the UDP connection or an error.
 func listen(addr *net.UDPAddr) (connection *net.UDPConn, error error) {
 	connection, error = net.ListenUDP("udp", addr)
+	log.Println(addr, error)
 	return
 }
 

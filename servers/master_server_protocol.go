@@ -61,7 +61,7 @@ func (query serverListQuery) bytes() []byte {
 // Use the generator concurrency pattern to stream the parsed servers over an established channel.
 //
 // The servers channel will be used to stream each newly read batch of Server objects. The error channel will serve
-// as a "control" channel to indicate that an error has occurred at some point during the operation. To indicate that 
+// as a "control" channel to indicate that an error has occurred at some point during the operation. To indicate that
 // there are no more servers to be streamed, a ChannelExhausted error will be sent on the error channel.
 //
 // A timeout value is required. For example: 500ms. See time.ParseDuration for more information.
@@ -71,7 +71,7 @@ func GetServerList(masterServer string, region ServerRegion, filter string, time
 
 	go func() {
 		// Establish an outbound connection to the master server
-		outboundConnection, connectError := connect(masterServer)
+		outboundConnection, connectError := connect(masterServer, "")
 		if connectError != nil {
 			error <- connectError
 			return

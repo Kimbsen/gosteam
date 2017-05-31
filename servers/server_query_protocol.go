@@ -50,18 +50,18 @@ type challenge struct {
 	challenge []byte
 }
 
-func GetPlayerInfo(server string, timeout string) (<-chan *PlayerInfo, <-chan error) {
+func GetPlayerInfo(server, laddr, timeout string) (<-chan *PlayerInfo, <-chan error) {
 	playerInfoChannel := make(chan *PlayerInfo)
 	errorChannel := make(chan error)
 
 	go func() {
-		outboundConnection, inboundConnection, connectionError := openConnections(server, timeout)
+		outboundConnection, _, connectionError := openConnections(server, timeout, laddr)
 		if connectionError != nil {
 			errorChannel <- connectionError
 			return
 		}
 		defer outboundConnection.Close()
-		defer inboundConnection.Close()
+		//defer inboundConnection.Close()
 
 		_, writeError := outboundConnection.Write(request_A2S_PLAYER_INFO_CHALLENGE)
 		if writeError != nil {
@@ -69,7 +69,7 @@ func GetPlayerInfo(server string, timeout string) (<-chan *PlayerInfo, <-chan er
 			return
 		}
 
-		reader := bufio.NewReader(inboundConnection)
+		reader := bufio.NewReader(outboundConnection)
 
 		// Read the challenge
 		challengeBytes := make([]byte, 9)
@@ -162,26 +162,25 @@ func (serverInfo ServerInfo) String() string {
 // on the error channel.
 //
 // A timeout value is required. For example: 500ms. See time.ParseDuration for more information.
-func GetServerInfo(server string, timeout string) (<-chan *ServerInfo, <-chan error) {
+func GetServerInfo(server, localport, timeout string) (<-chan *ServerInfo, <-chan error) {
 	serverInfoChannel := make(chan *ServerInfo)
 	errorChannel := make(chan error)
 
 	go func() {
-		outboundConnection, inboundConnection, connectionError := openConnections(server, timeout)
+		outboundConnection, _, connectionError := openConnections(server, timeout, localport)
 		if connectionError != nil {
 			errorChannel <- connectionError
 			return
 		}
-		defer outboundConnection.Close()
-		defer inboundConnection.Close()
 
+		defer outboundConnection.Close()
 		_, writeError := outboundConnection.Write(request_A2S_SERVER_INFO)
 		if writeError != nil {
 			errorChannel <- writeError
 			return
 		}
 
-		reader := bufio.NewReader(inboundConnection)
+		reader := bufio.NewReader(outboundConnection)
 		headerBytes := make([]byte, 4)
 		_, readError := reader.Read(headerBytes)
 		if readError != nil {
@@ -265,21 +264,25 @@ func readNextByteAsBool(buffer *bytes.Buffer) bool {
 	return false
 }
 
-func openConnections(server string, timeout string) (outboundConnection *net.UDPConn, inboundConnection *net.UDPConn, error error) {
-	outboundConnection, error = connect(server)
+func openConnections(server, timeout, localport string) (outboundConnection *net.UDPConn, inboundConnection *net.UDPConn, error error) {
+	outboundConnection, error = connect(server, localport)
 	if error != nil {
 		return
 	}
-
-	inboundConnection, error = listen(outboundConnection.LocalAddr().(*net.UDPAddr))
+	error = setReadDeadline(outboundConnection, timeout)
 	if error != nil {
 		return
 	}
+	/*
+		inboundConnection, error = listen(outboundConnection.LocalAddr().(*net.UDPAddr))
+		if error != nil {
+			return
+		}
 
-	error = setReadDeadline(inboundConnection, timeout)
-	if error != nil {
-		return
-	}
-
+		error = setReadDeadline(inboundConnection, timeout)
+		if error != nil {
+			return
+		}
+	*/
 	return
 }
